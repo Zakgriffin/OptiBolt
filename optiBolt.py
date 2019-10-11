@@ -63,7 +63,7 @@ while(True):
         dp.setFrame(frame, screw['box']) # set frame for drawing with display function
 
         dp.outline() # outline the screw with rounded box
-        allInfo = False
+        allInfo = True
         if allInfo:
             # label all measurment info for screw
             dp.labelAllInfo(length, diameter, threadCount)
