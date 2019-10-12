@@ -6,33 +6,37 @@ from constants import screwHeadTolerance
 import cv2 #DEBUG - frame and cv2 won't be needed in end product
 
 def cleanPoints(screw, frame):
-    # Rotates, flattens, and generally cleans up points for a screw
+    # Function Outline:
+    # 1. Rotate all points of screw by opposite the angle of line of best fit (rotate points to have screw laying horizontally)
+    # 2. Assign each point to tops or bottoms lists, splitting screw in half
+    # 3. Flip x and y for necessary points so that screw head is on the right
+    # 4. Reverse order of necessary lists so that first element is farthest left
+    # 5. Find extraneous points to remove head of screw
+    # 6. Return tuple of cleaned tops and bottoms
 
-    # unpack line best fit dy/dx, center at (x, y)
-    dx, dy, x, y = screw['line']
-    # rotate all points by this angle
-    A = math.atan2(dy, dx)
+    dx, dy, x, y = screw['line'] # unpack line best fit dy/dx, center at (x, y)
+    A = math.atan2(dy, dx) # rotate all points by this angle
 
     #cv2.line(frame, (x, y), (20 * math.cos(A) + x, 20 * math.sin(A) + y), (255, 0, 255), 2) # DEBUG
     #cv2.circle(frame, (x, y), 3, (0, 0, 255), -1) # DEBUG
 
     flatPoints = []
-    # rotate all points to have screw laying horizontally, add to flatPoints
+    # 1. Rotate all points of screw by opposite the angle of line of best fit
     for point in screw['points']:
-        # coords relative to center (x, y)
-        xOff = x - point[0]
-        yOff = y - point[1]
+        # coords relative to center of screw at (x, y)
+        xRel = x - point[0]
+        yRel = y - point[1]
 
-        r = math.sqrt(xOff * xOff + yOff * yOff) # distance
-        aOff = math.atan2(yOff, xOff) # angle
+        r = math.sqrt(xRel * xRel + yRel * yRel) # distance to point
+        aOff = math.atan2(yRel, xRel) # angle to point
         
         # new rotated coords
         xNew = r * math.cos(aOff - A)
         yNew = r * math.sin(aOff - A)
 
-        flatPoints.append([xNew, yNew])
+        flatPoints.append([xNew, yNew]) # add to list
 
-    # split into 2 lists, tops/bottoms
+    # 2. Assign each point to tops or bottoms lists, splitting screw in half
     tops = []
     bottoms = []
     extra = [] # to be appended to beginning of either tops or bottoms
@@ -54,34 +58,49 @@ def cleanPoints(screw, frame):
     if onTops: tops = extra + tops
     else: bottoms = extra + bottoms
 
-
     # now for the tricky bit...
-    for p in tops: p[1] = -p[1] # flip all y for tops
+
     # find if highest point is to the left or right of center
-    highest = (0, 0)
+    highest = (0, 0) # coord of heighest point (on head of screw)
     for p in bottoms:
-        if p[1] > highest[1]: highest = p # new best
+        if p[1] > highest[1]: highest = p # found new highest
+
+    # 3. Flip x and y for necessary points so that screw head is on the right
+
+    # y coords
+    for p in tops: p[1] = -p[1] # always have to negate y coord of all in tops
+    # never have to negate y coord of all in bottoms
+
+    # x coords
     if highest[0] < 0:
-        for p in tops: p[0] = -p[0]
-        for p in bottoms: p[0] = -p[0]
-        bottoms = list(reversed(bottoms))
+        # screw head was on left
+        for p in tops: p[0] = -p[0] # negate x coord of all in tops
+        for p in bottoms: p[0] = -p[0] # negate x coord of all in bottoms
+        
+    # 4. Reverse order of necessary lists so that first element is farthest left
+        bottoms = list(reversed(bottoms)) # reverse list of bottoms
     else:
-        tops = list(reversed(tops))
-    # now have two lists of cleaned points other than removing head
+        # screw head is on right
+        tops = list(reversed(tops)) # reverse list of tops
+
+    # 5. Find extraneous points to remove head of screw
     def removeHead(half):
+        # sub function applied to tops and bottoms
         average = 0
         if len(half) == 0:
             return []
         for p in half: average += p[1]
-        average /= len(half)
+        average /= len(half) # average is now roughly radius of screw
 
         #cv2.line(frame, (0, average + y), (1000, average + y), (255, 0, 0)) # DEBUG
 
         for i in range(0, len(half)):
             if half[i][1] > average + screwHeadTolerance:
+                # found start of screw head, discard rest of list
                 half = half[0:i]
                 break
         return half
+
     tops = removeHead(tops)
     bottoms = removeHead(bottoms)
 
@@ -98,5 +117,9 @@ def cleanPoints(screw, frame):
     """
     # DEBUG
 
-    # now have (tops, bottoms) in flat, consistant format and without heads
-    return tops, bottoms
+    if len(tops) == 0 or len(bottoms) == 0:
+        # no points left on screw after cleaning, invalid screw
+        return None, None, True
+
+    # 6. Return tuple of cleaned tops and bottoms
+    return tops, bottoms, False

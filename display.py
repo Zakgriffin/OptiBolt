@@ -12,10 +12,13 @@ pad = 10
 frame = None
 xB, yB, wB, hB = None, None, None, None
 
-def setFrame(f, b):
-    # Sets the frame for drawing images to and some basic coords for box outline
-    global frame, xB, yB, wB, hB
+def setFrame(f):
+    # Sets the frame for drawing images
+    global frame
     frame = f
+def setBox(b):
+    # Sets coords for box outline
+    global xB, yB, wB, hB
     xB, yB, wB, hB = b
 
 def labelMeasure(dimensions, descriptor = '', coord = (0, 0), color = (255, 255, 255)):

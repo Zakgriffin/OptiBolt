@@ -49,18 +49,19 @@ while(True):
             'line': cv2.fitLine(ctr, cv2.DIST_WELSCH, 100, 0, 0)
         })
 
+    dp.setFrame(frame) # set frame for use in display
     for screw in screws:
         # clean up points: rotate to flat, remove head, split into top and bottom lists
-        tops, bottoms = cleanPoints(screw, frame)
+        tops, bottoms, invalid = cleanPoints(screw, frame)
 
-        if len(tops) == 0 or len(bottoms) == 0: continue # no points on screw
+        if invalid: continue # invalid screw after cleaning
 
         # grab screw info
         length = getLength(tops, bottoms)
         diameter = getDiameter(tops, bottoms)
         threadCount, points = getThreadCount(tops, bottoms)
 
-        dp.setFrame(frame, screw['box']) # set frame for drawing with display function
+        dp.setBox(screw['box']) # set box dimensions for use in display
 
         dp.outline() # outline the screw with rounded box
         allInfo = True
